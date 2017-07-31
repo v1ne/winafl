@@ -527,6 +527,7 @@ event_module_load(void *drcontext, const module_data_t *info, bool loaded)
                     DR_ASSERT_MSG(to_wrap, "Can't find specified method in fuzz_module");                
                     to_wrap += (size_t)info->start;
                 }
+                dr_fprintf(winafl_data.log, "target offset: %p\n", to_wrap - info->start);
             }
             drwrap_wrap_ex(to_wrap, pre_fuzz_handler, post_fuzz_handler, NULL, options.callconv);
         }
