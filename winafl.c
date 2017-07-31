@@ -413,10 +413,12 @@ pre_fuzz_handler(void *wrapcxt, INOUT void **user_data)
     fuzz_target.func_pc = target_to_fuzz;
 
     if(!options.debug_mode) {
-        ReadFile(pipe, &command, 1, &num_read, NULL);
+        BOOL success = ReadFile(pipe, &command, 1, &num_read, NULL);
 
-        if(command != 'F') {
-            if(command == 'Q') {
+        if(!success || num_read != 1 || command != 'F') {
+            if(!success || num_read != 1) {
+                dr_exit_process(1);
+            } else if(command == 'Q') {
                 dr_exit_process(0);
             } else {
                 DR_ASSERT_MSG(false, "unrecognized command received over pipe");
@@ -608,7 +610,10 @@ setup_pipe() {
          0,              // default attributes
          NULL);          // no template file
 
-    if (pipe == INVALID_HANDLE_VALUE) DR_ASSERT_MSG(false, "error connecting to pipe");
+    if (pipe == INVALID_HANDLE_VALUE) {
+        dr_printf("error connecting to pipe");
+        dr_exit_process(1);
+    }
 }
 
 static void
@@ -620,7 +625,10 @@ setup_shmem() {
                    FALSE,                 // do not inherit the name
                    options.shm_name);            // name of mapping object
 
-   if (map_file == NULL) DR_ASSERT_MSG(false, "error accesing shared memory");
+    if (map_file == NULL) {
+        dr_printf("error accesing shared memory");
+        dr_exit_process(1);
+    }
 
    winafl_data.afl_area = (unsigned char *) MapViewOfFile(map_file, // handle to map object
                FILE_MAP_ALL_ACCESS,  // read/write permission
