@@ -523,10 +523,22 @@ event_module_load(void *drcontext, const module_data_t *info, bool loaded)
                 to_wrap = (app_pc)dr_get_proc_address(info->handle, options.fuzz_method);
                 if(!to_wrap) {
                     //if that fails, try with the symbol access library
-                    drsym_init(0);
-                    drsym_lookup_symbol(info->full_path, options.fuzz_method, (size_t *)(&to_wrap), 0);
-                    drsym_exit();
-                    DR_ASSERT_MSG(to_wrap, "Can't find specified method in fuzz_module");                
+                    auto initResult = drsym_init(0);
+                    auto lookupResult = initResult;
+                    auto exitResult = initResult;
+                    if (initResult == DRSYM_SUCCESS) {
+                      dr_fprintf(winafl_data.log, "Success!\n");
+                      auto lookupResult = drsym_lookup_symbol(info->full_path, options.fuzz_method, (size_t *)(&to_wrap), 0);
+                      auto exitResult = drsym_exit();
+                    }
+
+                    if(initResult != DRSYM_SUCCESS || lookupResult != DRSYM_SUCCESS || exitResult != DRSYM_SUCCESS || !to_wrap) {
+                      char buf[1024];
+                      dr_snprintf(buf, 1024, "Can't find method %s in module %s; initResult:%d, lookupResul:%d, exitResult:%d",
+                        options.fuzz_method, module_name, initResult, lookupResult, exitResult);
+                      DR_ASSERT_MSG(to_wrap, buf);
+                    }
+
                     to_wrap += (size_t)info->start;
                 }
                 dr_fprintf(winafl_data.log, "target offset: %p\n", to_wrap - info->start);
